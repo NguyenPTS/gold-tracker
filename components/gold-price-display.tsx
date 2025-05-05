@@ -1,11 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-
-interface GoldPrice {
-  name: string
-  buy: number
-  sell: number
-}
+import { type GoldPrice } from "@/lib/api"
 
 interface GoldPriceDisplayProps {
   goldPrices: GoldPrice[]
@@ -49,7 +44,7 @@ export default function GoldPriceDisplay({ goldPrices, selectedType, loading }: 
         <CardContent className="p-6">
           <p className="text-sm text-gray-500 dark:text-gray-400">Buy Price</p>
           <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-            {selectedPrice.buy.toLocaleString()} VND
+            {selectedPrice.buyPrice.toLocaleString()} VND
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Per gram</p>
         </CardContent>
@@ -57,12 +52,14 @@ export default function GoldPriceDisplay({ goldPrices, selectedType, loading }: 
       <Card className="bg-red-50 dark:bg-red-950/30">
         <CardContent className="p-6">
           <p className="text-sm text-gray-500 dark:text-gray-400">Sell Price</p>
-          <p className="text-3xl font-bold text-red-600 dark:text-red-400">{selectedPrice.sell.toLocaleString()} VND</p>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+            {selectedPrice.sellPrice.toLocaleString()} VND
+          </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Per gram</p>
         </CardContent>
       </Card>
       <div className="col-span-2 text-center text-xs text-gray-500 dark:text-gray-400 mt-2">
-        Last updated: {new Date().toLocaleString()}
+        Last updated: {selectedPrice.timestamp}
       </div>
     </div>
   )

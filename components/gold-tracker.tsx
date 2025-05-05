@@ -10,12 +10,7 @@ import { ArrowUpDown, RefreshCw } from "lucide-react"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import GoldPriceDisplay from "./gold-price-display"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-interface GoldPrice {
-  name: string
-  buy: number
-  sell: number
-}
+import { goldApi, type GoldPrice } from "@/lib/api"
 
 interface GoldData {
   goldType: string
@@ -28,10 +23,10 @@ export default function GoldTracker() {
   const [goldPrices, setGoldPrices] = useState<GoldPrice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedGoldType, setSelectedGoldType] = useState("SJC")
+  const [selectedGoldType, setSelectedGoldType] = useState("VÀNG MIẾNG SJC")
 
   const [goldData, setGoldData] = useLocalStorage<GoldData>("goldData", {
-    goldType: "SJC",
+    goldType: "VÀNG MIẾNG SJC",
     amount: "",
     unit: "grams",
     buyPrice: "",
@@ -47,11 +42,7 @@ export default function GoldTracker() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/gold-prices")
-      if (!response.ok) {
-        throw new Error("Failed to fetch gold prices")
-      }
-      const data = await response.json()
+      const data = await goldApi.getLatestPrices()
       setGoldPrices(data)
     } catch (err) {
       setError("Failed to fetch gold prices. Please try again later.")
@@ -95,7 +86,7 @@ export default function GoldTracker() {
 
     const amount = Number.parseFloat(goldData.amount)
     const buyPrice = Number.parseFloat(goldData.buyPrice)
-    const currentPrice = selectedPrice.sell
+    const currentPrice = selectedPrice.sellPrice
 
     // Convert taels to grams if needed (1 tael = 37.5 grams)
     const amountInGrams = goldData.unit === "taels" ? amount * 37.5 : amount
@@ -200,59 +191,36 @@ export default function GoldTracker() {
               <Input
                 id="buyPrice"
                 type="number"
-                placeholder="Enter purchase price per gram"
+                placeholder="Enter purchase price"
                 value={goldData.buyPrice}
                 onChange={(e) => handleInputChange("buyPrice", e.target.value)}
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {profit && (
-        <Card className={profit.value >= 0 ? "bg-green-50 dark:bg-green-950/30" : "bg-red-50 dark:bg-red-950/30"}>
-          <CardHeader>
-            <CardTitle>Investment Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Current Value</p>
-                  <p className="text-2xl font-bold">{profit.currentValue.toLocaleString()} VND</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Profit/Loss</p>
-                  <div className="flex items-center gap-2">
-                    <p
-                      className={`text-2xl font-bold ${profit.value >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+            {profit && (
+              <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <h3 className="font-semibold mb-2">Profit/Loss Analysis</h3>
+                <div className="grid gap-2">
+                  <div className="flex justify-between">
+                    <span>Current Value:</span>
+                    <span className="font-medium">{profit.currentValue.toLocaleString()} VND</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Profit/Loss:</span>
+                    <span
+                      className={`font-medium ${
+                        profit.value >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
                     >
-                      {profit.value >= 0 ? "+" : ""}
-                      {profit.value.toLocaleString()} VND
-                    </p>
-                    <ArrowUpDown
-                      className={`h-5 w-5 ${profit.value >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-                    />
+                      {profit.value.toLocaleString()} VND ({profit.percentage.toFixed(2)}%)
+                    </span>
                   </div>
                 </div>
               </div>
-
-              <div className="flex justify-center">
-                <div
-                  className={`text-xl font-semibold px-4 py-2 rounded-full ${
-                    profit.value >= 0
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
-                      : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
-                  }`}
-                >
-                  {profit.value >= 0 ? "+" : ""}
-                  {profit.percentage.toFixed(2)}%
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

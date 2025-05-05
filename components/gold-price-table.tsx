@@ -3,20 +3,13 @@
 import { useGoldPrice } from "@/components/gold-price-provider"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { GoldPrice } from "@/lib/api"
 
 export function GoldPriceTable() {
   const { goldPrices, isLoading } = useGoldPrice()
 
   // Make sure goldPrices is an array before using array methods
   const goldPricesArray = Array.isArray(goldPrices) ? goldPrices : []
-
-  // Define categories based on the new ID format
-  const goldCategories = {
-    sjc: ["SJC"], // SJC gold
-    btmc: ["BTMC-999.9", "BTMC-99.9"], // BTMC gold
-    other: ["VRTL", "NHAN", "QUA", "NL"], // Other gold types
-  }
 
   if (isLoading) {
     return (
@@ -35,47 +28,32 @@ export function GoldPriceTable() {
   }
 
   // Format price with commas
-  const formatPrice = (price: string) => {
+  const formatPrice = (price: string | number) => {
     if (!price || price === "0") return "N/A"
 
+    // Convert to string if it's a number
+    const priceStr = price.toString()
+
     // If the price already has commas, return it as is
-    if (price.includes(",")) return price
+    if (typeof priceStr === 'string' && priceStr.includes(",")) return priceStr
 
     // Otherwise, format it with commas
-    return Number.parseInt(price).toLocaleString("vi-VN")
+    return Number(priceStr).toLocaleString("vi-VN")
   }
 
-  const renderGoldTable = (categoryIds: string[]) => {
-    // Filter the gold prices based on category IDs
-    const filteredGold = goldPricesArray.filter((gold) => {
-      if (!gold || !gold.id) return false
-      return categoryIds.includes(gold.id)
-    })
+  // Group prices by type
+  const goldCategories = {
+    sjc: goldPricesArray.filter(p => p.name.includes('SJC')),
+    btmc: goldPricesArray.filter(p => p.name.includes('BTMC')),
+    other: goldPricesArray.filter(p => !p.name.includes('SJC') && !p.name.includes('BTMC')),
+  }
 
-    // For SJC tab, show all items that have "SJC" in their name if no exact matches
-    // For BTMC tab, show all items that have "BTMC" in their name if no exact matches
-    // For other tab, show all remaining items
-    let goldToShow = filteredGold
-
-    if (filteredGold.length === 0) {
-      if (categoryIds === goldCategories.sjc) {
-        goldToShow = goldPricesArray.filter((gold) => gold && gold.name && gold.name.includes("SJC"))
-      } else if (categoryIds === goldCategories.btmc) {
-        goldToShow = goldPricesArray.filter((gold) => gold && gold.name && gold.name.includes("BTMC"))
-      } else {
-        goldToShow = goldPricesArray.filter(
-          (gold) => gold && gold.name && !gold.name.includes("SJC") && !gold.name.includes("BTMC"),
-        )
-      }
-    }
-
-    // If we still have no items to show, just show all gold prices
-    if (goldToShow.length === 0) {
-      goldToShow = goldPricesArray
-    }
+  const renderGoldSection = (title: string, prices: GoldPrice[]) => {
+    if (prices.length === 0) return null;
 
     return (
-      <div>
+      <div className="mb-6 last:mb-0">
+        <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-3">{title}</h3>
         <Table className="border-collapse">
           <TableHeader className="bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900 dark:to-yellow-900">
             <TableRow>
@@ -88,74 +66,41 @@ export function GoldPriceTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {goldToShow.length > 0 ? (
-              goldToShow.map((gold, index) => (
-                <TableRow
-                  key={gold.id || index}
-                  className={
-                    index % 2 === 0 ? "bg-amber-50 dark:bg-amber-950/30" : "bg-yellow-50 dark:bg-yellow-950/30"
-                  }
-                >
-                  <TableCell className="font-medium text-amber-900 dark:text-amber-100">{gold.name}</TableCell>
-                  <TableCell className="text-green-700 dark:text-green-400 font-semibold">
-                    {formatPrice(gold.buyPrice)}
-                  </TableCell>
-                  <TableCell className="text-red-700 dark:text-red-400 font-semibold">
-                    {formatPrice(gold.sellPrice)}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-amber-700 dark:text-amber-300">
-                    {gold.updatedAt}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-amber-700 dark:text-amber-300">
-                  Không có dữ liệu cho danh mục này
+            {prices.map((gold, index) => (
+              <TableRow
+                key={gold.row}
+                className={
+                  index % 2 === 0 ? "bg-amber-50 dark:bg-amber-950/30" : "bg-yellow-50 dark:bg-yellow-950/30"
+                }
+              >
+                <TableCell className="font-medium text-amber-900 dark:text-amber-100">{gold.name}</TableCell>
+                <TableCell className="text-green-700 dark:text-green-400 font-semibold">
+                  {formatPrice(gold.buyPrice)}
+                </TableCell>
+                <TableCell className="text-red-700 dark:text-red-400 font-semibold">
+                  {formatPrice(gold.sellPrice)}
+                </TableCell>
+                <TableCell className="hidden md:table-cell text-amber-700 dark:text-amber-300">
+                  {gold.timestamp}
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
-        <div className="mt-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 p-2 rounded-md">
-          <p>* Giá Mua: Giá bạn có thể mua vàng từ các đại lý</p>
-          <p>* Giá Bán: Giá các đại lý sẽ mua lại vàng từ bạn</p>
-        </div>
       </div>
     )
   }
 
   return (
-    <Tabs defaultValue="sjc" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-amber-300 to-yellow-300 dark:from-amber-800 dark:to-yellow-800">
-        <TabsTrigger
-          value="sjc"
-          className="data-[state=active]:bg-amber-500 data-[state=active]:text-white dark:data-[state=active]:bg-amber-600"
-        >
-          Vàng SJC
-        </TabsTrigger>
-        <TabsTrigger
-          value="btmc"
-          className="data-[state=active]:bg-amber-500 data-[state=active]:text-white dark:data-[state=active]:bg-amber-600"
-        >
-          Vàng BTMC
-        </TabsTrigger>
-        <TabsTrigger
-          value="other"
-          className="data-[state=active]:bg-amber-500 data-[state=active]:text-white dark:data-[state=active]:bg-amber-600"
-        >
-          Loại Khác
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="sjc" className="animate-in fade-in-50">
-        {renderGoldTable(goldCategories.sjc)}
-      </TabsContent>
-      <TabsContent value="btmc" className="animate-in fade-in-50">
-        {renderGoldTable(goldCategories.btmc)}
-      </TabsContent>
-      <TabsContent value="other" className="animate-in fade-in-50">
-        {renderGoldTable(goldCategories.other)}
-      </TabsContent>
-    </Tabs>
+    <div>
+      {renderGoldSection("Vàng SJC", goldCategories.sjc)}
+      {renderGoldSection("Vàng BTMC", goldCategories.btmc)}
+      {renderGoldSection("Các Loại Vàng Khác", goldCategories.other)}
+      
+      <div className="mt-4 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 p-2 rounded-md">
+        <p>* Giá Mua: Giá bạn có thể mua vàng từ các đại lý</p>
+        <p>* Giá Bán: Giá các đại lý sẽ mua lại vàng từ bạn</p>
+      </div>
+    </div>
   )
 }

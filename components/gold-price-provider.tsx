@@ -1,18 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
-
-export interface GoldPrice {
-  id: string
-  name: string
-  karat: string
-  purity: string
-  buyPrice: string
-  sellPrice: string
-  updatedAt: string
-}
+import { goldApi, type GoldPrice } from "@/lib/api"
 
 interface GoldPriceContextType {
   goldPrices: GoldPrice[] | null
@@ -27,40 +17,40 @@ const GoldPriceContext = createContext<GoldPriceContextType | undefined>(undefin
 // Default gold prices to use if the API fails
 const DEFAULT_GOLD_PRICES: GoldPrice[] = [
   {
-    id: "SJC",
-    name: "VÀNG MIẾNG SJC (Vàng SJC)",
-    karat: "24k",
+    row: "1",
+    name: "VÀNG MIẾNG SJC",
+    type: "24k",
     purity: "999.9",
-    buyPrice: "11810000",
-    sellPrice: "12100000",
-    updatedAt: new Date().toLocaleString(),
+    buyPrice: 11810000,
+    sellPrice: 12100000,
+    timestamp: new Date().toLocaleString(),
   },
   {
-    id: "VRTL",
-    name: "VÀNG MIẾNG VRTL (Vàng Rồng Thăng Long)",
-    karat: "24k",
+    row: "2",
+    name: "VÀNG MIẾNG VRTL",
+    type: "24k",
     purity: "999.9",
-    buyPrice: "11640000",
-    sellPrice: "11970000",
-    updatedAt: new Date().toLocaleString(),
+    buyPrice: 11640000,
+    sellPrice: 11970000,
+    timestamp: new Date().toLocaleString(),
   },
   {
-    id: "BTMC-999.9",
-    name: "TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 999.9 (Vàng BTMC)",
-    karat: "24k",
+    row: "3",
+    name: "TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 999.9",
+    type: "24k",
     purity: "999.9",
-    buyPrice: "11560000",
-    sellPrice: "11950000",
-    updatedAt: new Date().toLocaleString(),
+    buyPrice: 11560000,
+    sellPrice: 11950000,
+    timestamp: new Date().toLocaleString(),
   },
   {
-    id: "BTMC-99.9",
-    name: "TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 99.9 (Vàng BTMC)",
-    karat: "24k",
+    row: "4",
+    name: "TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 99.9",
+    type: "24k",
     purity: "99.9",
-    buyPrice: "11550000",
-    sellPrice: "11940000",
-    updatedAt: new Date().toLocaleString(),
+    buyPrice: 11550000,
+    sellPrice: 11940000,
+    timestamp: new Date().toLocaleString(),
   },
 ]
 
@@ -76,13 +66,7 @@ export function GoldPriceProvider({ children }: { children: React.ReactNode }) {
 
     try {
       console.log("Fetching gold prices...")
-      const response = await fetch("/api/gold-prices")
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch gold prices: ${response.status}`)
-      }
-
-      const data = await response.json()
+      const data = await goldApi.getLatestPrices()
       console.log("Received gold prices:", data)
 
       // Check if we got valid data
