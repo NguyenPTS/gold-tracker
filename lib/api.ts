@@ -6,6 +6,31 @@ interface FetchOptions extends RequestInit {
   requiresAuth?: boolean;
 }
 
+// Helper để lấy token từ nhiều nguồn
+const getAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  
+  // 1. Thử lấy từ cookie
+  const cookieToken = Cookies.get('access_token');
+  if (cookieToken) return cookieToken;
+  
+  // 2. Thử lấy từ localStorage
+  const localToken = localStorage.getItem('auth_token');
+  if (localToken) {
+    // Nếu có trong localStorage nhưng không có trong cookie, khôi phục cookie
+    console.log('[API] Restoring token from localStorage to cookie');
+    Cookies.set('access_token', localToken, {
+      expires: 7,
+      path: '/',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production'
+    });
+    return localToken;
+  }
+  
+  return null;
+};
+
 async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { params, requiresAuth = true, headers: customHeaders, ...fetchOptions } = options;
   
@@ -15,8 +40,14 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
     url += `?${searchParams.toString()}`;
   }
 
-  // Read token from cookie directly to avoid circular dependencies
-  const token = typeof window !== 'undefined' ? Cookies.get('access_token') : null;
+  // Lấy token từ nhiều nguồn
+  const token = getAuthToken();
+
+  console.log('[API] Request:', { 
+    endpoint, 
+    hasToken: !!token,
+    tokenFirstChars: token ? token.substring(0, 10) + '...' : 'none' 
+  });
 
   try {
     const response = await fetch(url, {
@@ -26,27 +57,44 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
         ...(token && requiresAuth ? { 'Authorization': `Bearer ${token}` } : {}),
         ...(customHeaders as Record<string, string>),
       },
+      credentials: 'include', // Include cookies in requests
     });
+
+    console.log('[API] Response status:', response.status);
 
     if (!response.ok) {
       if (response.status === 401) {
+        console.log('[API] Unauthorized (401) response');
         // Handle unauthorized in a clean way
-        // Instead of direct store imports, clear cookie
-        Cookies.remove('access_token');
+        // Clear token from all storages
+        Cookies.remove('access_token', { path: '/' });
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
+        }
         
         // For SPA client-side navigation
         if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          console.log('[API] Redirecting to /login due to 401');
           window.location.href = '/login';
         }
         
         throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       }
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      
+      // Try to get error message from response
+      let errorText = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorText = errorData.message || errorText;
+      } catch (e) {
+        // Ignore parse errors
+      }
+      throw new Error(errorText);
     }
 
     return response.json();
   } catch (error) {
-    console.error('API Request failed:', error);
+    console.error('[API] Request failed:', error);
     throw error;
   }
 }
@@ -73,12 +121,32 @@ export const goldApi = {
 };
 
 export interface Asset {
-  id: string
+  id: string | number
+  user?: {
+    id: number
+    username: string
+    email: string
+    firstName?: string
+    lastName?: string
+    picture?: string | null
+    isGoogleUser: boolean
+  }
+  type: string
+  amount: number
+  buyPrice: number
+  sellPrice: number | null
+  isSold: boolean
+  buyDate: string
+  sellDate: string | null
+  note: string
+}
+
+// Interface for creating a new asset
+export interface CreateAssetData {
   type: string
   amount: number
   buyPrice: number
   note: string
-  createdAt: string
 }
 
 export const assetApi = {
@@ -87,21 +155,37 @@ export const assetApi = {
     fetchApi<Asset[]>(API_CONFIG.endpoints.assets.list),
   
   // Thêm tài sản mới
-  createAsset: (data: Omit<Asset, "id" | "createdAt">) => 
-    fetchApi<Asset>(API_CONFIG.endpoints.assets.create, {
+  createAsset: (data: CreateAssetData) => {
+    // Validate data before sending to API
+    if (!data.type || data.amount <= 0 || data.buyPrice <= 0) {
+      return Promise.reject(new Error("Dữ liệu không hợp lệ. Kiểm tra lại loại vàng, số lượng và giá mua."));
+    }
+    
+    // Ensure we're sending data in the correct format
+    const assetData = {
+      type: data.type,
+      amount: Number(data.amount),
+      buyPrice: Number(data.buyPrice),
+      note: data.note || ""
+    };
+    
+    console.log('[API] Creating asset with data:', assetData);
+    
+    return fetchApi<Asset>(API_CONFIG.endpoints.assets.create, {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
+      body: JSON.stringify(assetData),
+    });
+  },
   
   // Xóa tài sản
-  deleteAsset: (id: string) => 
-    fetchApi(API_CONFIG.endpoints.assets.delete(id), {
+  deleteAsset: (id: string | number) => 
+    fetchApi(API_CONFIG.endpoints.assets.delete(String(id)), {
       method: 'DELETE',
     }),
   
   // Cập nhật tài sản
-  updateAsset: (id: string, data: Partial<Omit<Asset, "id" | "createdAt">>) => 
-    fetchApi<Asset>(API_CONFIG.endpoints.assets.update(id), {
+  updateAsset: (id: string | number, data: Partial<Pick<Asset, "type" | "amount" | "buyPrice" | "sellPrice" | "isSold" | "sellDate" | "note">>) => 
+    fetchApi<Asset>(API_CONFIG.endpoints.assets.update(String(id)), {
       method: 'PUT',
       body: JSON.stringify(data),
     }),

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Header } from "@/components/header"
 import { AuthProvider } from '@/components/auth-provider'
 import { StoreInitializer } from '@/components/store-initializer'
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,17 +23,18 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body className={inter.className}>
-        <div className="min-h-screen bg-amber-50 dark:bg-slate-900">
-          <StoreInitializer />
-          <Header />
-          <main>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-              <AuthProvider>
+        <StoreInitializer />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AuthProvider>
+            <div className="min-h-screen bg-amber-50 dark:bg-slate-900">
+              <Header />
+              <main>
                 {children}
-              </AuthProvider>
-            </ThemeProvider>
-          </main>
-        </div>
+              </main>
+            </div>
+            <Toaster position="top-right" richColors />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

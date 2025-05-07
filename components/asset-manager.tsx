@@ -22,13 +22,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, TrendingDown, TrendingUp } from "lucide-react"
+import { MoreHorizontal, TrendingDown, TrendingUp, Trash2 } from "lucide-react"
 import { Button as ShadButton } from "@/components/ui/button"
 import { useGoldPrice } from "@/components/gold-price-provider"
 import { Badge } from "@/components/ui/badge"
 import { Asset, assetApi } from "@/lib/api"
 import { useAuthStore } from "@/store/use-auth-store"
 import { useAssetStore } from "@/store/use-asset-store"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface AssetWithStats extends Asset {
   currentValue: number
@@ -64,11 +74,28 @@ export function AssetManager() {
     key: keyof AssetWithStats
     direction: 'asc' | 'desc'
   } | null>(null)
+  const [operationLoading, setOperationLoading] = useState(false)
+  const [deleteAssetId, setDeleteAssetId] = useState<string | number | null>(null)
 
   // Fetch assets when component mounts
   useEffect(() => {
-    fetchAssets()
-  }, [fetchAssets])
+    if (isAuthenticated) {
+      console.log('[AssetManager] Initial loading of assets')
+      fetchAssets()
+    }
+  }, [fetchAssets, isAuthenticated])
+
+  // Thêm refresh cho asset list với loading
+  const refreshAssets = async () => {
+    try {
+      console.log('[AssetManager] Manually refreshing asset list')
+      await fetchAssets()
+      toast.success('Đã cập nhật danh sách tài sản')
+    } catch (error) {
+      toast.error('Không thể cập nhật danh sách tài sản')
+      console.error('[AssetManager] Error refreshing assets:', error)
+    }
+  }
 
   // Tính toán thống kê cho từng tài sản
   const assetsWithStats: AssetWithStats[] = useMemo(() => {
@@ -77,7 +104,7 @@ export function AssetManager() {
     return assets.map(asset => {
       const currentPrice = goldPrices.find(price => {
         if (asset.type === "SJC") return price.name === "VÀNG MIẾNG SJC"
-        if (asset.type === "VRTL") return price.name === "VÀNG MIẾNG VRTL"
+        if (asset.type === "VRTL") return price.name === "VÀNG MIẾNG VRTL" 
         if (asset.type === "BTMC") return price.name === "TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 999.9"
         return false
       })
@@ -89,10 +116,15 @@ export function AssetManager() {
         profitPercentage: 0
       }
 
-      const currentValue = asset.amount * currentPrice.sellPrice
-      const initialValue = asset.amount * asset.buyPrice
+      // Use Number() to ensure we're working with numbers from API string values
+      const assetAmount = Number(asset.amount)
+      const assetBuyPrice = Number(asset.buyPrice)
+      const currentSellPrice = currentPrice.sellPrice
+
+      const currentValue = assetAmount * currentSellPrice
+      const initialValue = assetAmount * assetBuyPrice
       const profit = currentValue - initialValue
-      const profitPercentage = (profit / initialValue) * 100
+      const profitPercentage = initialValue > 0 ? (profit / initialValue) * 100 : 0
 
       return {
         ...asset,
@@ -106,8 +138,12 @@ export function AssetManager() {
   // Tính tổng thống kê
   const totalStats = useMemo(() => {
     return assetsWithStats.reduce((acc, asset) => {
+      // Use Number() to ensure we're working with numbers
+      const assetAmount = Number(asset.amount)
+      const assetBuyPrice = Number(asset.buyPrice)
+      
       return {
-        totalInvestment: acc.totalInvestment + (asset.amount * asset.buyPrice),
+        totalInvestment: acc.totalInvestment + (assetAmount * assetBuyPrice),
         totalCurrentValue: acc.totalCurrentValue + asset.currentValue,
         totalProfit: acc.totalProfit + asset.profit
       }
@@ -121,8 +157,40 @@ export function AssetManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate data before submission
+    if (formData.amount <= 0) {
+      toast.error("Số lượng phải lớn hơn 0");
+      return;
+    }
+    
+    if (formData.buyPrice <= 0) {
+      toast.error("Giá mua phải lớn hơn 0");
+      return;
+    }
+    
+    // Ensure amounts are within reasonable limits
+    if (formData.amount > 1000) {
+      toast.error("Số lượng quá lớn. Vui lòng kiểm tra lại");
+      return;
+    }
+    
+    // Format data to match API expectations
+    const assetData = {
+      type: formData.type,
+      amount: Number(formData.amount),
+      buyPrice: Number(formData.buyPrice),
+      note: formData.note.trim()
+    };
+    
+    console.log('[AssetManager] Submitting asset data:', assetData);
+    
     try {
-      await addAsset(formData)
+      setOperationLoading(true)
+      
+      await addAsset(assetData)
+      
+      toast.success("Đã thêm tài sản mới")
+      
       // Reset form
       setFormData({
         type: "SJC",
@@ -130,8 +198,56 @@ export function AssetManager() {
         buyPrice: 0,
         note: "",
       })
-    } catch (err) {
-      console.error(err)
+      
+      // Refresh asset list to show the new asset
+      await fetchAssets()
+    } catch (err: any) {
+      console.error('[AssetManager] Error adding asset:', err)
+      
+      // Handle different error types
+      if (err?.message?.includes('500')) {
+        toast.error("Lỗi máy chủ. Dữ liệu có thể không hợp lệ hoặc máy chủ đang gặp sự cố");
+      } else if (err?.message?.includes('401')) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      } else if (err?.message?.includes('400')) {
+        toast.error("Dữ liệu không hợp lệ. Vui lòng kiểm tra lại các thông tin.");
+      } else {
+        toast.error("Không thể thêm tài sản: " + (err?.message || "Vui lòng thử lại sau."));
+      }
+    } finally {
+      setOperationLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string | number) => {
+    try {
+      setOperationLoading(true)
+      console.log(`[AssetManager] Deleting asset with ID: ${id}`)
+      
+      // Gọi API để xóa tài sản
+      await deleteAsset(String(id))
+      
+      // Thông báo thành công
+      toast.success("Đã xóa tài sản thành công")
+      
+      // Refresh danh sách tài sản sau khi xóa thành công
+      console.log('[AssetManager] Refreshing asset list after deletion')
+      fetchAssets()
+    } catch (err: any) {
+      // Xử lý các trường hợp lỗi khác nhau
+      if (err?.message?.includes('404')) {
+        toast.error("Không tìm thấy tài sản. Có thể tài sản đã bị xóa trước đó.")
+        // Vẫn refresh để đảm bảo danh sách được cập nhật
+        fetchAssets()
+      } else if (err?.message?.includes('401')) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")
+      } else {
+        toast.error("Không thể xóa tài sản. " + (err?.message || "Vui lòng thử lại sau."))
+      }
+      console.error('[AssetManager] Delete asset error:', err)
+    } finally {
+      setOperationLoading(false)
+      setDeleteAssetId(null)
     }
   }
 
@@ -149,8 +265,26 @@ export function AssetManager() {
     if (!sortConfig) return 0
 
     const { key, direction } = sortConfig
-    if (a[key] < b[key]) return direction === 'asc' ? -1 : 1
-    if (a[key] > b[key]) return direction === 'asc' ? 1 : -1
+    
+    // Handle numeric fields with string values from API
+    const getComparableValue = (asset: AssetWithStats, key: keyof AssetWithStats) => {
+      const value = asset[key]
+      if (typeof value === 'string' && !isNaN(Number(value))) {
+        return Number(value)
+      }
+      return value
+    }
+    
+    const aValue = getComparableValue(a, key)
+    const bValue = getComparableValue(b, key)
+    
+    // Add null/undefined check
+    if (aValue == null && bValue == null) return 0
+    if (aValue == null) return direction === 'asc' ? -1 : 1
+    if (bValue == null) return direction === 'asc' ? 1 : -1
+    
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1
     return 0
   })
 
@@ -165,6 +299,17 @@ export function AssetManager() {
       }
       return null
     })
+  }
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('vi-VN')
+  }
+
+  // Thêm hàm này để mở dialog xác nhận xóa
+  const confirmDelete = (id: string | number) => {
+    setDeleteAssetId(id)
   }
 
   if (authLoading) {
@@ -237,7 +382,7 @@ export function AssetManager() {
               )}
             </div>
             <div className={`text-sm ${totalStats.totalProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {((totalStats.totalProfit / totalStats.totalInvestment) * 100).toFixed(2)}%
+              {totalStats.totalInvestment > 0 ? ((totalStats.totalProfit / totalStats.totalInvestment) * 100).toFixed(2) : 0}%
             </div>
           </CardContent>
         </Card>
@@ -248,7 +393,7 @@ export function AssetManager() {
         <CardHeader>
           <CardTitle className="text-amber-800 dark:text-amber-300">Thêm Tài Sản Mới</CardTitle>
           <CardDescription className="text-amber-600 dark:text-amber-400">
-            Nhập thông tin tài sản vàng của bạn
+            Nhập thông tin tài sản vàng mới bạn muốn theo dõi
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -265,37 +410,34 @@ export function AssetManager() {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(GOLD_TYPES).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="amount">Số Lượng (Lượng)</Label>
+                <Label htmlFor="amount">Số Lượng (chỉ)</Label>
                 <Input
                   id="amount"
                   type="number"
-                  min="0.1"
-                  step="0.1"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
-                  className="border-amber-200 dark:border-amber-800"
+                  onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+                  min="0.01"
+                  step="0.01"
+                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="buyPrice">Giá Mua (VND)</Label>
+                <Label htmlFor="buyPrice">Giá Mua (VND/chỉ)</Label>
                 <Input
                   id="buyPrice"
                   type="number"
-                  min="0"
-                  step="1000"
                   value={formData.buyPrice}
-                  onChange={(e) => setFormData({ ...formData, buyPrice: parseInt(e.target.value) })}
-                  className="border-amber-200 dark:border-amber-800"
+                  onChange={(e) => setFormData({ ...formData, buyPrice: Number(e.target.value) })}
+                  min="0"
+                  required
                 />
               </div>
 
@@ -305,17 +447,24 @@ export function AssetManager() {
                   id="note"
                   value={formData.note}
                   onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                  className="border-amber-200 dark:border-amber-800"
+                  placeholder="Thêm ghi chú về tài sản này"
                 />
               </div>
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+            <Button 
+              type="submit" 
+              className="bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800" 
+              disabled={loading || operationLoading}
             >
-              {loading ? "Đang xử lý..." : "Thêm Tài Sản"}
+              {operationLoading ? (
+                <>
+                  <span className="h-4 w-4 mr-2 animate-spin rounded-full border-t-2 border-white"></span>
+                  Đang xử lý...
+                </>
+              ) : (
+                'Thêm Tài Sản'
+              )}
             </Button>
           </form>
         </CardContent>
@@ -326,118 +475,147 @@ export function AssetManager() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="text-amber-800 dark:text-amber-300">Danh Sách Tài Sản</CardTitle>
+              <CardTitle className="text-amber-800 dark:text-amber-300">
+                Danh Sách Tài Sản ({assets.length})
+              </CardTitle>
               <CardDescription className="text-amber-600 dark:text-amber-400">
-                Quản lý danh mục đầu tư vàng của bạn
+                Quản lý danh sách tài sản vàng của bạn
               </CardDescription>
             </div>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refreshAssets} 
+              disabled={loading || operationLoading}
+              className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/30"
+            >
+              {loading ? (
+                <>
+                  <span className="h-4 w-4 mr-2 animate-spin rounded-full border-t-2 border-amber-600 dark:border-amber-400"></span>
+                  Đang tải...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Làm mới
+                </>
+              )}
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-amber-200 dark:border-amber-800">
+          {error && (
+            <div className="mb-4 p-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 rounded-md">
+              {error}
+            </div>
+          )}
+
+          {assets.length === 0 ? (
+            <div className="text-center py-6 text-amber-600 dark:text-amber-400">
+              Bạn chưa có tài sản nào. Hãy thêm tài sản mới để bắt đầu theo dõi.
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50"
-                    onClick={() => handleSort('type')}
-                  >
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('type')}>
                     Loại Vàng
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50"
-                    onClick={() => handleSort('amount')}
-                  >
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('amount')}>
                     Số Lượng
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50"
-                    onClick={() => handleSort('buyPrice')}
-                  >
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('buyPrice')}>
                     Giá Mua
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50"
-                    onClick={() => handleSort('currentValue')}
-                  >
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('currentValue')}>
                     Giá Trị Hiện Tại
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50"
-                    onClick={() => handleSort('profit')}
-                  >
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('profit')}>
                     Lãi/Lỗ
                   </TableHead>
-                  <TableHead>Ghi Chú</TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/50"
-                    onClick={() => handleSort('createdAt')}
-                  >
-                    Ngày Tạo
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('buyDate')}>
+                    Ngày Mua
                   </TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead>Ghi Chú</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedAssets.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-amber-600 dark:text-amber-400">
-                      Chưa có tài sản nào
+                {sortedAssets.map((asset) => (
+                  <TableRow key={asset.id}>
+                    <TableCell>
+                      {GOLD_TYPES[asset.type as keyof typeof GOLD_TYPES]}
+                    </TableCell>
+                    <TableCell>{Number(asset.amount).toFixed(2)}</TableCell>
+                    <TableCell>{formatPrice(Number(asset.buyPrice))}</TableCell>
+                    <TableCell>{formatPrice(asset.currentValue)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={asset.profit >= 0 ? "success" : "destructive"}>
+                          {asset.profit >= 0 ? '+' : ''}{formatPrice(asset.profit)}
+                        </Badge>
+                        <span className={`text-xs ${asset.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          ({asset.profit >= 0 ? '+' : ''}{asset.profitPercentage.toFixed(2)}%)
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatDate(asset.buyDate)}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{asset.note}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <ShadButton variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Mở menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </ShadButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => confirmDelete(asset.id)}
+                            className="text-red-600 dark:text-red-400 focus:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Xoá tài sản
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  sortedAssets.map((asset) => (
-                    <TableRow key={asset.id}>
-                      <TableCell className="font-medium">
-                        {GOLD_TYPES[asset.type as keyof typeof GOLD_TYPES]}
-                      </TableCell>
-                      <TableCell>{asset.amount} lượng</TableCell>
-                      <TableCell>{formatPrice(asset.buyPrice)} VND</TableCell>
-                      <TableCell>{formatPrice(asset.currentValue)} VND</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={asset.profit >= 0 ? "success" : "destructive"}
-                            className="font-medium"
-                          >
-                            {formatPrice(Math.abs(asset.profit))} VND
-                          </Badge>
-                          <span className={`text-sm ${
-                            asset.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                          }`}>
-                            ({asset.profitPercentage.toFixed(2)}%)
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">{asset.note}</TableCell>
-                      <TableCell>
-                        {new Date(asset.createdAt).toLocaleDateString("vi-VN")}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <ShadButton variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </ShadButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-red-600 dark:text-red-400"
-                              onClick={() => deleteAsset(asset.id)}
-                            >
-                              Xóa
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
-          </div>
+          )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteAssetId !== null} onOpenChange={(open) => !open && setDeleteAssetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa tài sản</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa tài sản này? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={operationLoading}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                if (deleteAssetId !== null) {
+                  handleDelete(deleteAssetId)
+                }
+              }}
+              disabled={operationLoading}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+            >
+              {operationLoading ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
-} 
+}
