@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { GoldPriceTable } from "@/components/gold-price-table"
 
-type GoldUnit = "grams" | "taels" | "chi"
+type GoldUnit = "taels" | "chi"
 
 interface UserInput {
   goldType: string
@@ -36,22 +36,13 @@ const DEFAULT_GOLD_TYPES = {
 
 export function GoldCalculator() {
   const { goldPrices, isLoading, refetch, lastUpdated } = useGoldPrice()
+  const [mounted, setMounted] = useState(false)
 
-  const [userInput, setUserInput] = useState<UserInput>(() => {
-    // Try to load from localStorage if available
-    if (typeof window !== "undefined") {
-      const savedInput = localStorage.getItem("goldCalculatorInput")
-      if (savedInput) {
-        return JSON.parse(savedInput)
-      }
-    }
-
-    return {
-      goldType: "SJC", // Default to SJC gold
-      amount: "",
-      unit: "chi" as GoldUnit, // Default to chi instead of grams
-      purchasePrice: "",
-    }
+  const [userInput, setUserInput] = useState<UserInput>({
+    goldType: "SJC",
+    amount: "",
+    unit: "chi",
+    purchasePrice: "",
   })
 
   const [result, setResult] = useState<{
@@ -65,10 +56,27 @@ export function GoldCalculator() {
     unit: GoldUnit
   } | null>(null)
 
+  // Set mounted state after hydration
+  useEffect(() => {
+    setMounted(true)
+    
+    // Load saved input after mounting
+    const savedInput = localStorage.getItem("goldCalculatorInput")
+    if (savedInput) {
+      try {
+        setUserInput(JSON.parse(savedInput))
+      } catch (error) {
+        console.error("Error loading saved input:", error)
+      }
+    }
+  }, [])
+
   // Save user input to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem("goldCalculatorInput", JSON.stringify(userInput))
-  }, [userInput])
+    if (mounted) {
+      localStorage.setItem("goldCalculatorInput", JSON.stringify(userInput))
+    }
+  }, [userInput, mounted])
 
   const handleInputChange = (field: keyof UserInput, value: string) => {
     setUserInput((prev) => ({
@@ -124,6 +132,13 @@ export function GoldCalculator() {
     })
     setResult(null)
   }
+
+  // Don't render anything until after hydration
+  if (!mounted) {
+    return null
+  }
+
+  const isButtonDisabled = !userInput.amount || !userInput.purchasePrice
 
   // Format currency for display
   const formatCurrency = (value: number) => {
@@ -212,10 +227,6 @@ export function GoldCalculator() {
                     <RadioGroupItem value="taels" id="taels" />
                     <Label htmlFor="taels">Lượng</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="grams" id="grams" />
-                    <Label htmlFor="grams">Gram</Label>
-                  </div>
                 </RadioGroup>
               </div>
 
@@ -228,7 +239,7 @@ export function GoldCalculator() {
                   step="0.1"
                   value={userInput.amount}
                   onChange={(e) => handleInputChange("amount", e.target.value)}
-                  placeholder={`Nhập số ${userInput.unit === "taels" ? "lượng" : userInput.unit === "chi" ? "chỉ" : "gram"}`}
+                  placeholder={`Nhập số ${userInput.unit === "taels" ? "lượng" : "chỉ"}`}
                 />
               </div>
 
@@ -248,7 +259,7 @@ export function GoldCalculator() {
               <Button
                 onClick={calculateProfit}
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
-                disabled={!userInput.amount || !userInput.purchasePrice}
+                disabled={isButtonDisabled}
               >
                 Tính Toán
               </Button>
@@ -271,7 +282,7 @@ export function GoldCalculator() {
                         {formatCurrencyCompact(result.currentValue)}
                       </p>
                       <p className="text-sm text-amber-600 dark:text-amber-400">
-                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : result.unit === "chi" ? "chỉ" : "gram"} × ${formatCurrency(result.currentPrice)} VND)`}
+                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : "chỉ"} × ${formatCurrency(result.currentPrice)} VND)`}
                       </p>
                     </div>
 
@@ -281,7 +292,7 @@ export function GoldCalculator() {
                         {formatCurrencyCompact(result.investmentValue)}
                       </p>
                       <p className="text-sm text-amber-600 dark:text-amber-400">
-                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : result.unit === "chi" ? "chỉ" : "gram"} × ${formatCurrency(result.purchasePrice)} VND)`}
+                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : "chỉ"} × ${formatCurrency(result.purchasePrice)} VND)`}
                       </p>
                     </div>
 

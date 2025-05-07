@@ -20,4 +20,4 @@ export const API_CONFIG = {
       googleCallback: '/auth/google/callback',
     },
   },
-}; 
+} as const; 

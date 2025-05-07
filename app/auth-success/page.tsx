@@ -1,72 +1,44 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuthStore } from '@/store/use-auth-store';
 
 export default function AuthSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { login } = useAuthStore();
+  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
-    // Log tất cả params từ URL
-    const allParams = Object.fromEntries(searchParams.entries());
-    console.log('Auth Success - All URL Params:', allParams);
-
-    // Kiểm tra cookie
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    console.log('Current cookies:', cookies);
-
-    const token = searchParams.get('access_token') || 
-                 searchParams.get('token') || 
-                 searchParams.get('jwt');
-
+    const token = searchParams.get('token');
+    
     if (token) {
-      console.log('Token found in URL, preparing user info');
+      console.log('[AuthSuccess] Token found, processing login...');
       
-      // Chuẩn bị user info từ URL params
-      const urlUserInfo = {
-        email: searchParams.get('email'),
-        name: searchParams.get('name'),
-        username: searchParams.get('username') || searchParams.get('name') || searchParams.get('email')?.split('@')[0],
-        picture: searchParams.get('picture') || searchParams.get('avatar'),
-      };
-
-      console.log('Prepared user info:', urlUserInfo);
-
-      try {
-        // Set auth token với secure và SameSite
-        document.cookie = `auth_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
-        
-        // Set user info với proper encoding và sử dụng dấu gạch dưới
-        const encodedUserInfo = encodeURIComponent(JSON.stringify(urlUserInfo));
-        document.cookie = `user_info=${encodedUserInfo}; path=/; max-age=${60 * 60 * 24 * 7}; secure; samesite=lax`;
-
-        console.log('Cookies set successfully');
-        console.log('New cookies:', document.cookie);
-        
-        // Redirect sau khi set cookies thành công
-        console.log('Redirecting to /gold-price');
-        router.replace('/gold-price');
-      } catch (error) {
-        console.error('Error setting cookies:', error);
-        router.replace('/login?error=cookie_error');
-      }
+      // Lưu token vào store (không dùng redirectPath tham số)
+      login(token);
+      
+      // Để thời gian cho store cập nhật
+      setTimeout(() => {
+        console.log('[AuthSuccess] Redirecting to gold-price page...');
+        router.push('/gold-price');
+        setIsProcessing(false);
+      }, 500);
     } else {
-      console.log('No token found in URL, redirecting to login');
-      router.replace('/login?error=no_token');
+      console.log('[AuthSuccess] No token found, redirecting to login...');
+      router.push('/login');
+      setIsProcessing(false);
     }
-  }, [router, searchParams]);
+  }, [searchParams, login, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="flex h-screen w-screen items-center justify-center">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold mb-4">Đang xử lý đăng nhập...</h2>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
+        <div className="h-32 w-32 animate-spin rounded-full border-t-2 border-b-2 border-amber-600 mx-auto"></div>
+        <p className="mt-4 text-lg text-amber-800 dark:text-amber-300">
+          {isProcessing ? 'Đang xử lý đăng nhập...' : 'Đang chuyển hướng...'}
+        </p>
       </div>
     </div>
   );
