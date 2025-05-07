@@ -163,11 +163,6 @@ export function AssetManager() {
       return;
     }
     
-    if (formData.buyPrice <= 0) {
-      toast.error("Giá mua phải lớn hơn 0");
-      return;
-    }
-    
     // Ensure amounts are within reasonable limits
     if (formData.amount > 1000) {
       toast.error("Số lượng quá lớn. Vui lòng kiểm tra lại");

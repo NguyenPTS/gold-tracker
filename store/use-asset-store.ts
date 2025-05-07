@@ -35,17 +35,23 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
     }
   },
 
-  addAsset: async (data: CreateAssetData) => {
+  addAsset: async (assetData: CreateAssetData) => {
+    set({ loading: true, error: null });
+    console.log("Attempting to add asset with data:", assetData);
+    
+    // Validate data before sending to API
+    if (!assetData.type) {
+      set({ error: "Vui lòng chọn loại vàng", loading: false });
+      return;
+    }
+    
+    if (assetData.amount <= 0) {
+      set({ error: "Số lượng phải lớn hơn 0", loading: false });
+      return;
+    }
+    
     try {
-      set({ loading: true, error: null })
-      console.log('[AssetStore] Adding new asset:', data)
-      
-      // Validate data before sending
-      if (!data.type) throw new Error('Loại vàng không hợp lệ')
-      if (data.amount <= 0) throw new Error('Số lượng phải lớn hơn 0')
-      if (data.buyPrice <= 0) throw new Error('Giá mua phải lớn hơn 0')
-      
-      const newAsset = await assetApi.createAsset(data)
+      const newAsset = await assetApi.createAsset(assetData)
       console.log('[AssetStore] Asset added successfully:', newAsset)
       
       set((state: AssetState) => ({ 

@@ -157,8 +157,8 @@ export const assetApi = {
   // Thêm tài sản mới
   createAsset: (data: CreateAssetData) => {
     // Validate data before sending to API
-    if (!data.type || data.amount <= 0 || data.buyPrice <= 0) {
-      return Promise.reject(new Error("Dữ liệu không hợp lệ. Kiểm tra lại loại vàng, số lượng và giá mua."));
+    if (!data.type || data.amount <= 0) {
+      return Promise.reject(new Error("Dữ liệu không hợp lệ. Kiểm tra lại loại vàng và số lượng."));
     }
     
     // Ensure we're sending data in the correct format
