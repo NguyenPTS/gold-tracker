@@ -37,11 +37,11 @@ const DEFAULT_GOLD_TYPES = {
 }
 
 const TIME_RANGES = {
+  "15M": "15 phút qua",
   "1H": "1 giờ qua",
-  "3H": "3 giờ qua",
-  "6H": "6 giờ qua",
-  "12H": "12 giờ qua",
   "24H": "24 giờ qua",
+  "7D": "7 ngày qua",
+  "30D": "30 ngày qua",
   "ALL": "Tất cả",
 }
 

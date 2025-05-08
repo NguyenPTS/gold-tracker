@@ -25,6 +25,8 @@ interface UserInput {
 const TAEL_TO_GRAM = 37.5
 // 1 chi = 3.75 grams
 const CHI_TO_GRAM = 3.75
+// 1 lượng = 10 chỉ
+const TAEL_TO_CHI = 10
 
 // Default gold type options
 const DEFAULT_GOLD_TYPES = {
@@ -91,32 +93,93 @@ export function GoldCalculator() {
     // Make sure goldPrices is an array
     const goldPricesArray = Array.isArray(goldPrices) ? goldPrices : []
 
-    const selectedGold = goldPricesArray.find((gold) => gold && gold.type === userInput.goldType)
-    if (!selectedGold) return
+    // Debug để kiểm tra dữ liệu vàng
+    console.log('Gold prices:', goldPricesArray)
+    console.log('User input:', userInput)
+
+    // Ánh xạ từ goldType (key) sang name (trong API)
+    const goldTypeToName: {[key: string]: string} = {
+      'SJC': 'VÀNG MIẾNG SJC',
+      'VRTL': 'VÀNG MIẾNG VRTL',
+      'BTMC-999.9': 'TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 999.9',
+      'BTMC-99.9': 'TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 99.9'
+    }
+
+    // Tìm loại vàng phù hợp theo tên (name)
+    const goldName = goldTypeToName[userInput.goldType] || userInput.goldType
+    const selectedGold = goldPricesArray.find(gold => gold && gold.name === goldName)
+    
+    if (!selectedGold) {
+      console.error('Không tìm thấy loại vàng:', goldName)
+      return
+    }
+
+    console.log('Selected gold:', selectedGold)
 
     // Current sell price and purchase price per unit
-    const currentPriceStr = selectedGold.sellPrice.toString()
-    const currentPrice = Number.parseFloat(currentPriceStr.replace(/,/g, ""))
+    const currentPriceStr = selectedGold.sellPrice?.toString() || "0"
+    const currentPrice = Number.parseFloat(currentPriceStr.toString().replace(/,/g, ""))
     let purchasePrice = Number.parseFloat(userInput.purchasePrice.replace(/,/g, ""))
 
-    if (isNaN(currentPrice) || isNaN(purchasePrice)) return
+    if (isNaN(currentPrice) || isNaN(purchasePrice)) {
+      console.error('Invalid prices:', { currentPrice, purchasePrice })
+      return
+    }
 
     // Convert amount to number
     let amount = Number.parseFloat(userInput.amount)
-    if (isNaN(amount)) return
+    if (isNaN(amount)) {
+      console.error('Invalid amount:', userInput.amount)
+      return
+    }
 
     // Calculate values based on input unit
-    const currentValue = currentPrice * amount
-    const investmentValue = purchasePrice * amount
-    const profit = currentValue - investmentValue
-    const profitPercentage = ((currentPrice - purchasePrice) / purchasePrice) * 100
+    let currentValue, investmentValue, profit, profitPercentage;
+    let displayCurrentPrice = currentPrice;
+    
+    if (userInput.unit === "taels") {
+      // Nếu đơn vị là lượng, nhưng giá từ API là theo chỉ
+      // Cần nhân giá từ API lên 10 lần để có giá theo lượng
+      const currentPricePerTael = currentPrice * TAEL_TO_CHI; // Chuyển giá/chỉ thành giá/lượng
+      
+      // Tính toán với giá đã chuyển đổi
+      currentValue = currentPricePerTael * amount;
+      investmentValue = purchasePrice * amount;
+      
+      // Tính lợi nhuận với giá đã chuyển đổi
+      profit = currentValue - investmentValue;
+      profitPercentage = ((currentPricePerTael - purchasePrice) / purchasePrice) * 100;
+      
+      // Lưu giá hiển thị theo lượng
+      displayCurrentPrice = currentPricePerTael;
+      
+      console.log('Tael conversion:', {
+        originalPricePerChi: currentPrice,
+        convertedPricePerTael: currentPricePerTael,
+        userPurchasePrice: purchasePrice
+      });
+    } else {
+      // Nếu đơn vị là chỉ thì tính như bình thường
+      currentValue = currentPrice * amount;
+      investmentValue = purchasePrice * amount;
+      profit = currentValue - investmentValue;
+      profitPercentage = ((currentPrice - purchasePrice) / purchasePrice) * 100;
+    }
+
+    console.log('Calculation result:', {
+      currentValue,
+      investmentValue,
+      profit,
+      profitPercentage,
+      unit: userInput.unit
+    });
 
     setResult({
       currentValue,
       profit,
       profitPercentage,
       purchasePrice,
-      currentPrice,
+      currentPrice: displayCurrentPrice,
       investmentValue,
       amount,
       unit: userInput.unit
@@ -250,7 +313,7 @@ export function GoldCalculator() {
                   type="text"
                   value={userInput.purchasePrice}
                   onChange={(e) => handleInputChange("purchasePrice", e.target.value)}
-                  placeholder="Nhập giá mua"
+                  placeholder={`Nhập giá mua (VND/${userInput.unit === "taels" ? "lượng" : "chỉ"})`}
                 />
               </div>
             </div>
@@ -282,7 +345,7 @@ export function GoldCalculator() {
                         {formatCurrencyCompact(result.currentValue)}
                       </p>
                       <p className="text-sm text-amber-600 dark:text-amber-400">
-                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : "chỉ"} × ${formatCurrency(result.currentPrice)} VND)`}
+                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : "chỉ"} × ${formatCurrency(result.currentPrice)} VND/${result.unit === "taels" ? "lượng" : "chỉ"})`}
                       </p>
                     </div>
 
@@ -292,7 +355,7 @@ export function GoldCalculator() {
                         {formatCurrencyCompact(result.investmentValue)}
                       </p>
                       <p className="text-sm text-amber-600 dark:text-amber-400">
-                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : "chỉ"} × ${formatCurrency(result.purchasePrice)} VND)`}
+                        {`(${result.amount} ${result.unit === "taels" ? "lượng" : "chỉ"} × ${formatCurrency(result.purchasePrice)} VND/${result.unit === "taels" ? "lượng" : "chỉ"})`}
                       </p>
                     </div>
 
