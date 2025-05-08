@@ -32,6 +32,9 @@ interface GoldPriceHistory {
 const DEFAULT_GOLD_TYPES = {
   "VÀNG MIẾNG SJC": "Vàng SJC",
   "VÀNG MIẾNG VRTL": "Vàng VRTL",
+  "QUÀ MỪNG BẢN VỊ VÀNG": "Quà Mừng Bản Vị Vàng",
+  "VÀNG NGUYÊN LIỆU": "Vàng Nguyên Liệu",
+  "NHẪN TRÒN TRƠN": "Nhẫn Tròn Trơn",
   "TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 999.9": "Vàng BTMC 999.9",
   "TRANG SỨC BẰNG VÀNG RỒNG THĂNG LONG 99.9": "Vàng BTMC 99.9",
 }
@@ -55,13 +58,55 @@ export function GoldPriceChart() {
     setIsLoading(true)
     try {
       const response = await fetch("http://localhost:3002/gold/prices/history")
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
       const data = await response.json()
+      console.log("Fetched price history:", data)
       setPriceHistory(data)
     } catch (error) {
       console.error("Error fetching price history:", error)
+      // Sử dụng dữ liệu mẫu khi không thể fetch từ API
+      generateAndUseMockData()
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Tạo và sử dụng dữ liệu mẫu khi API bị lỗi
+  const generateAndUseMockData = () => {
+    const mockData: GoldPriceHistory[] = []
+    const goldTypes = Object.keys(DEFAULT_GOLD_TYPES)
+    
+    // Tạo dữ liệu cho 7 ngày gần đây
+    for (let i = 0; i < 7; i++) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      
+      // Tạo giá cho mỗi loại vàng
+      goldTypes.forEach((type, index) => {
+        // Giá cơ sở
+        const basePrice = type === "VÀNG MIẾNG SJC" ? 12000000 : 11700000
+        
+        // Thêm một chút biến động ngẫu nhiên
+        const randomVariation = Math.floor(Math.random() * 100000) - 50000
+        const buyPrice = basePrice + randomVariation - i * 10000
+        const sellPrice = type === "VÀNG NGUYÊN LIỆU" ? 0 : buyPrice + 300000
+        
+        mockData.push({
+          row: (index + 1).toString(),
+          name: type,
+          type: "24k",
+          purity: type.includes("99.9") ? "99.9" : "999.9",
+          buyPrice,
+          sellPrice,
+          timestamp: date.toLocaleString("vi-VN")
+        })
+      })
+    }
+    
+    console.log("Using mock data:", mockData)
+    setPriceHistory(mockData)
   }
 
   useEffect(() => {

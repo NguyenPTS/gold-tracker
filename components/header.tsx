@@ -22,7 +22,7 @@ export function Header() {
     <header className="sticky top-0 z-40 w-full border-b bg-amber-50/80 backdrop-blur-sm dark:border-amber-800 dark:bg-slate-900/80">
       <div className="container flex h-16 items-center justify-between py-4">
         <Link
-          href="/"
+          href="/gold-price"
           className="flex items-center gap-2 text-xl font-semibold text-amber-800 dark:text-amber-300"
         >
           <GoldIcon className="h-6 w-6" />
