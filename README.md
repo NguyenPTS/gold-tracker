@@ -2,7 +2,7 @@
 
 Ứng dụng theo dõi giá vàng và quản lý đầu tư vàng cá nhân.
 
-![Gold Tracker Screenshot](https://via.placeholder.com/800x400?text=Gold+Tracker+Screenshot)
+![Gold Tracker Screenshot](https://gold-tracker-b6kkqz5n9-nguyenpts-projects.vercel.app/login)
 
 ## Tính năng
 
