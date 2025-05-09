@@ -14,7 +14,7 @@
 
 ## Demo
 
-Truy cập ứng dụng demo tại: [https://gold-tracker.vercel.app](https://gold-tracker.vercel.app)
+Truy cập ứng dụng demo tại: [https://gold-tracker-b6kkqz5n9-nguyenpts-projects.vercel.app/login](https://gold-tracker-b6kkqz5n9-nguyenpts-projects.vercel.app/login)
 
 ## Công nghệ sử dụng
 
