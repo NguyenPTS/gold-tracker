@@ -1,0 +1,43 @@
+name: Frontend Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  WORKSPACE: /home/frontend/
+  PROJECT_NAME: gold-tracker--1-
+
+jobs:
+  deploy:
+    name: Deploy Frontend
+    runs-on: self-hosted
+    steps:
+      - name: Debug path variables
+        run: |
+          echo "WORKSPACE=$WORKSPACE"
+          echo "PROJECT_NAME=$PROJECT_NAME"
+          echo "PWD=$(pwd)"
+          
+      - name: Deploy
+        run: |
+          echo "Deploying frontend"
+          cd $WORKSPACE/$PROJECT_NAME
+          git config credential.helper '!f() { sleep 1; echo "username=${{ secrets.GH_USER }}"; echo "password=${{ secrets.GH_TOKEN }}"; }; f'
+          git checkout main
+          git pull
+          
+          CONTAINER_EXISTS=$(docker-compose -f docker-compose.yml ps -q frontend)
+          if [ -n "$CONTAINER_EXISTS" ]; then
+            IMAGE_NAME="gold-tracker/frontend"
+            CONTAINER_ID=$(docker ps -q --filter "ancestor=$IMAGE_NAME")
+            if [ -n "$CONTAINER_ID" ]; then
+              docker stop $CONTAINER_ID
+              docker rm $CONTAINER_ID
+              docker image rm $IMAGE_NAME
+            fi
+          fi
+          
+          docker-compose -f docker-compose.yml up -d frontend 
