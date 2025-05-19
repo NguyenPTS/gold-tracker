@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: If Not Found Clone
         run: |
-          if [ ! -d "/home/frontend/gold-tracker--1-" ]; then
+          if [ ! -d "/home/frontend/gold-tracker" ]; then
             mkdir -p "$WORKSPACE/$PROJECT_NAME"
             cd "$WORKSPACE/$PROJECT_NAME"
             echo "Cloning repository..."
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         env:
           WORKSPACE: /home/frontend
-          PROJECT_NAME: gold-tracker--1-
+          PROJECT_NAME: gold-tracker
       - name: Get Project Name
         id: get_project
         run: |
