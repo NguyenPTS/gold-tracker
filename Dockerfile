@@ -12,8 +12,5 @@ ENV PORT_PROGRAM=${PORT_PROGRAM}
 # Install app dependencies
 COPY . .
 RUN npm install --force
-RUN npm run giavang:build
-COPY .env .env
-# Expose the port the app runs on
-EXPOSE ${PORT_PROGRAM}
-CMD ["sh", "-c", "node dist/apps/${PROJECT}/main.js"]
+RUN bun --bun next build
+CMD bun run start
