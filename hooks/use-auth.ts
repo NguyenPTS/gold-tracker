@@ -7,6 +7,7 @@ export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  
   useEffect(() => {
     const token = Cookies.get('access_token')
     setIsAuthenticated(!!token)
