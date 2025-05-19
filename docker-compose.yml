@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  giavang:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_NAME: giavang
+        PORT_PROGRAM: 2238:2238
+    image:  giavang-nest-giavang
+    container_name: giavang_nest_giavang
+    ports:
+      - '2238:2238'
+    networks:
+      - traefik
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.giavang.entrypoints=http'
+      - 'traefik.http.routers.giavang.rule=Host(`giavang.trungthanhdev.com`)'
+      - 'traefik.http.routers.giavang-secure.entrypoints=https'
+      - 'traefik.http.routers.giavang-secure.rule=Host(`giavang.trungthanhdev.com`)'
+      - 'traefik.http.routers.giavang-secure.tls.certresolver=letsencrypt'
+
+networks:
+  traefik:
+    external: true

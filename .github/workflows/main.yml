@@ -1,0 +1,61 @@
+name: Main workflow
+on:
+  push:
+    branches:
+      - main
+env:
+  WORKSPACE: /home/frontend
+  PROJECT_NAME: ${{ github.event.repository.name }}
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: self-hosted
+    steps:
+      - name: If Not Found Clone
+        run: |
+          if [ ! -d "/home/frontend/gold-tracker--1-" ]; then
+            mkdir -p "$WORKSPACE/$PROJECT_NAME"
+            cd "$WORKSPACE/$PROJECT_NAME"
+            echo "Cloning repository..."
+            git clone https://${{ secrets.GH_TOKEN }}@github.com/NguyenPTS/$PROJECT_NAME.git $WORKSPACE/$PROJECT_NAME
+          else
+            echo "Repository already exists."
+          fi
+        shell: bash
+        env:
+          WORKSPACE: /home/frontend
+          PROJECT_NAME: gold-tracker--1-
+      - name: Get Project Name
+        id: get_project
+        run: |
+          echo "Commit Message: ${{ github.event.head_commit.message }}"
+          if [[ "${{ github.event.head_commit.message }}" =~ \[cd-([^\]-]+)\] ]]; then
+            echo "::set-output name=project::${BASH_REMATCH[1]}"
+          else
+            echo "::set-output name=project::null"
+          fi
+      - name: Deploy
+        run: |
+          if [[ "${{ steps.get_project.outputs.project }}" != "null" ]]; then
+              echo "Deploying ${{ steps.get_project.outputs.project }}"
+              cd $WORKSPACE/$PROJECT_NAME
+              git config credential.helper '!f() { sleep 1; echo "username=${{ secrets.GH_USER }}"; echo "password=${{ secrets.GH_TOKEN }}"; }; f'
+              git checkout main
+              git pull
+              CONTAINER_EXISTS=$(docker-compose -f docker-compose.yml ps -q ${{ steps.get_project.outputs.project }})
+              if [ -n "$CONTAINER_EXISTS" ]; then
+                echo "Deploying 1"
+                IMAGE_NAME="giavang-nest-giavang"
+                echo "Deploying 2"
+                CONTAINER_ID=$(docker ps -q --filter "ancestor=$IMAGE_NAME")
+                echo "Deploying "$CONTAINER_ID""
+                docker stop $CONTAINER_ID
+                echo "Deploying 4"
+                docker rm $CONTAINER_ID 
+                echo "Deploying 5"
+                docker image rm $IMAGE_NAME
+              fi
+              docker-compose -f docker-compose.yml up -d ${{ steps.get_project.outputs.project }}
+          else
+              echo "No project to deploy"
+          fi
