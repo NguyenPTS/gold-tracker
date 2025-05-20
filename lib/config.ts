@@ -12,6 +12,7 @@ export const API_CONFIG = {
       update: (id: string) => `/assets/${id}`,
       delete: (id: string) => `/assets/${id}`,
     },
+    
     auth: {
       login: '/auth/login',
       logout: '/auth/logout',
