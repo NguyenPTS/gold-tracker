@@ -168,4 +168,4 @@ Dự án này được phân phối dưới giấy phép MIT. Xem [LICENSE](LICE
 ---
 
 © 2025 Gold Tracker. All rights reserved. 
-Tes deploy
+Tes deploy 2
