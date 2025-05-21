@@ -15,6 +15,7 @@ export const API_CONFIG = {
     },
     
     
+
     auth: {
       login: '/auth/login',
       logout: '/auth/logout',
