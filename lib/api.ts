@@ -35,6 +35,8 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
+const API_KEY = process.env.API_KEY;
+
 async function fetchApi<T>(
   endpoint: string,
   options: FetchOptions = {}
@@ -67,6 +69,7 @@ async function fetchApi<T>(
       headers: {
         "Content-Type": "application/json",
         ...(token && requiresAuth ? { Authorization: `Bearer ${token}` } : {}),
+        ...(API_KEY ? { "x-api-key": API_KEY } : {}),
         ...(customHeaders as Record<string, string>),
       },
       credentials: "include", // Include cookies in requests
