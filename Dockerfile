@@ -15,4 +15,4 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Nếu muốn log debug:
 # ENV DEBUG=*
 
-CMD ["bun", "--bun", "next", "start", "-H", "0.0.0.0", "-p", "2238"]
+CMD ["bun", "--bun", "next", "start", "-H", "0.0.0.0", "-p", "3000"]
