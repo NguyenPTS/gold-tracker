@@ -7,11 +7,11 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT_NAME: giavang
-        PORT_PROGRAM: 2238:2238
+        PORT_PROGRAM: 2238:3000
     image:  giavang-nest-giavang
     container_name: giavang_nest_giavang
     ports:
-      - '2238:2238'
+      - '2238:3000'
     networks:
       - traefik
     labels:
