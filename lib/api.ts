@@ -90,6 +90,7 @@ async function fetchApi<T>(
           window.location.pathname !== "/login"
         ) {
           console.log("[API] Redirecting to /login due to 401");
+          // Chỉ redirect khi chắc chắn đang ở client, không reload nếu đã ở /login
           window.location.href = "/login";
         }
 

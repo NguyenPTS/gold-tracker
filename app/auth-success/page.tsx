@@ -82,8 +82,8 @@ export default function AuthSuccessPage() {
           });
           
           console.log('[AuthSuccess] Redirecting to /gold-price');
-          // Sử dụng window.location.href thay vì router để làm mới hoàn toàn trang
-          window.location.href = '/gold-price';
+          // Sử dụng router.replace thay vì window.location.href để tránh reload
+          router.replace('/gold-price');
           setIsProcessing(false);
         }, 1000);
       } catch (error) {

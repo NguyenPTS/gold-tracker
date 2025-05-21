@@ -39,11 +39,10 @@ export async function GET(request: Request) {
 
     const { access_token, user } = data;
 
-    // Tạo response với redirect đến trang test
-    console.log('Creating redirect response to /test');
-    // const baseUrl = request.headers.get('origin') || 'http://localhost:3000';
-    const baseUrl = request.headers.get('origin') || 'hhttps://giavang-api.trungthanhdev.com';
-    const redirectUrl = new URL('/test', baseUrl);
+    // Tạo response với redirect đến trang auth-success
+    console.log('Creating redirect response to /auth-success');
+    const baseUrl = request.headers.get('origin') || 'https://giavang.trungthanhdev.com';
+    const redirectUrl = new URL('/auth-success', baseUrl);
     console.log('Full redirect URL:', redirectUrl.toString());
     const frontendResponse = NextResponse.redirect(redirectUrl);
 
