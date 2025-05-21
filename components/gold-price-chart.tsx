@@ -58,7 +58,7 @@ export function GoldPriceChart() {
     setIsLoading(true)
     try {
       // const response = await fetch("http://localhost:3002/gold/prices/history")
-      const response = await fetch("https://giavang.trungthanhdev.com/gold/prices/history")
+      const response = await fetch("http://14.225.205.200:2238/gold/prices/history")
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
