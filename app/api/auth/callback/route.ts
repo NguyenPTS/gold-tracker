@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     // Gọi API backend để đổi code lấy token
     console.log('Exchanging code for token...');
     //http://localhost:3002/auth/google/callback'
-    const response = await fetch('https://giavang.trungthanhdev.com/auth/google/callback', {
+    const response = await fetch('http://14.225.205.200:2238', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     // Tạo response với redirect đến trang test
     console.log('Creating redirect response to /test');
     // const baseUrl = request.headers.get('origin') || 'http://localhost:3000';
-    const baseUrl = request.headers.get('origin') || 'https://giavang.trungthanhdev.com/';
+    const baseUrl = request.headers.get('origin') || 'http://14.225.205.200:2238';
     const redirectUrl = new URL('/test', baseUrl);
     console.log('Full redirect URL:', redirectUrl.toString());
     const frontendResponse = NextResponse.redirect(redirectUrl);

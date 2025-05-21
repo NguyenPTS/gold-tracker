@@ -1,6 +1,6 @@
 export const API_CONFIG = {
   // baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002',
-  baseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://giavang.trungthanhdev.com',
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://14.225.205.200:2238',
   endpoints: {
     goldPrices: {
       latest: '/gold/prices/latest',
