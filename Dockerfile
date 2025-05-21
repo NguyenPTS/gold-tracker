@@ -14,4 +14,4 @@ COPY . .
 
 # ENV NEXT_TELEMETRY_DISABLED 1
 RUN bun --bun next build
-CMD ["bun", "--bun", "next", "start"]
+CMD ["bun", "--bun", "next", "start", "-H", "0.0.0.0", "-p", "2238"]
