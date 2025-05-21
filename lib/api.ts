@@ -35,7 +35,7 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
 async function fetchApi<T>(
   endpoint: string,
