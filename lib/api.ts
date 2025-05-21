@@ -15,8 +15,9 @@ const getAuthToken = (): string | null => {
 
   const cookieToken = Cookies.get("access_token");
   if (cookieToken) return cookieToken;
-
   
+
+
   // 2. Thử lấy từ localStorage
   const localToken = localStorage.getItem("auth_token");
   if (localToken) {
