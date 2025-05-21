@@ -15,8 +15,4 @@ COPY . .
 # ENV NEXT_TELEMETRY_DISABLED 1
 RUN bun --bun next build
 ENV NODE_ENV=production
-CMD ["npm", "run", "start"]
-# Nếu dùng yarn:
-# CMD ["yarn", "start"]
-# Nếu muốn log rõ ràng hơn, có thể thêm script start trong package.json:
-# "start": "NODE_ENV=production next start -p 3000"
+CMD ["bun", "--bun", "next", "start", "-H", "0.0.0.0", "-p", "2238"]
