@@ -12,10 +12,11 @@ const getAuthToken = (): string | null => {
 
   // 1. Thử lấy từ cookie
 
-  
+
   const cookieToken = Cookies.get("access_token");
   if (cookieToken) return cookieToken;
 
+  
   // 2. Thử lấy từ localStorage
   const localToken = localStorage.getItem("auth_token");
   if (localToken) {
