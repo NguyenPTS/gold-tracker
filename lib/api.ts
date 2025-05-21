@@ -11,6 +11,7 @@ const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
 
   // 1. Thử lấy từ cookie
+  
   const cookieToken = Cookies.get("access_token");
   if (cookieToken) return cookieToken;
 
