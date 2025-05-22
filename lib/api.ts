@@ -266,10 +266,11 @@ export const authApi = {
   getProfile: () => fetchApi(API_CONFIG.endpoints.auth.profile),
 
   googleLogin: () => {
-    // Redirect to Google OAuth endpoint with auth-success as redirect URI
+    // Redirect to Google OAuth endpoint trên API domain với redirect_uri là FE domain
     const redirectUri = `${window.location.origin}/auth-success`;
     const encodedRedirect = encodeURIComponent(redirectUri);
-    window.location.href = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.auth.google}?redirect_uri=${encodedRedirect}`;
+    // Đảm bảo luôn dùng API domain, không phải FE domain
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?redirect_uri=${encodedRedirect}`;
   },
 
   googleCallback: (code: string) =>
