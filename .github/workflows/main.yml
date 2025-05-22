@@ -34,11 +34,6 @@ jobs:
           else
             echo "::set-output name=project::null"
           fi
-      - name: Create .env for FE
-        run: |
-          echo "NEXT_PUBLIC_API_URL=https://giavang-api.trungthanhdev.com/" > .env
-          echo "NEXT_PUBLIC_API_KEY=${{ secrets.NEXT_PUBLIC_API_KEY }}" >> .env
-        working-directory: ${{ env.WORKSPACE }}/${{ env.PROJECT_NAME }}
       - name: Deploy
         run: |
           if [[ "${{ steps.get_project.outputs.project }}" != "null" ]]; then
@@ -47,6 +42,11 @@ jobs:
               git config credential.helper '!f() { sleep 1; echo "username=${{ secrets.GH_USER }}"; echo "password=${{ secrets.GH_TOKEN }}"; }; f'
               git checkout main
               git pull
+
+              # Tạo file .env sau khi pull code về
+              echo "NEXT_PUBLIC_API_URL=https://giavang-api.trungthanhdev.com/" > .env
+              echo "NEXT_PUBLIC_API_KEY=${{ secrets.NEXT_PUBLIC_API_KEY }}" >> .env
+
               CONTAINER_EXISTS=$(docker-compose -f docker-compose.yml ps -q ${{ steps.get_project.outputs.project }})
               if [ -n "$CONTAINER_EXISTS" ]; then
                 echo "Deploying 1"
