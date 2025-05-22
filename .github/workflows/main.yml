@@ -46,6 +46,8 @@ jobs:
               # Tạo file .env sau khi pull code về
               echo "NEXT_PUBLIC_API_URL=https://giavang-api.trungthanhdev.com/" > .env
               echo "NEXT_PUBLIC_API_KEY=${{ secrets.NEXT_PUBLIC_API_KEY }}" >> .env
+              echo "[DEBUG] Nội dung file .env vừa tạo:"
+              cat .env || (echo '[ERROR] Không đọc được file .env, kiểm tra quyền thư mục!' && exit 1)
 
               CONTAINER_EXISTS=$(docker-compose -f docker-compose.yml ps -q ${{ steps.get_project.outputs.project }})
               if [ -n "$CONTAINER_EXISTS" ]; then
