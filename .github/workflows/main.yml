@@ -34,6 +34,11 @@ jobs:
           else
             echo "::set-output name=project::null"
           fi
+      - name: Create .env for FE
+        run: |
+          echo "NEXT_PUBLIC_API_URL=https://giavang-api.trungthanhdev.com/" > .env
+          echo "NEXT_PUBLIC_API_KEY=${{ secrets.NEXT_PUBLIC_API_KEY }}" >> .env
+        working-directory: ${{ env.WORKSPACE }}/${{ env.PROJECT_NAME }}
       - name: Deploy
         run: |
           if [[ "${{ steps.get_project.outputs.project }}" != "null" ]]; then
